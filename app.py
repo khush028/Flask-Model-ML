@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 import joblib
 import pandas as pd
+import os
 
 app = Flask(__name__)
 
@@ -17,6 +18,7 @@ def home():
 def predict():
     try:
         # Get JSON data from request
+        port = int(os.environ.get("PORT", 5000))
         data = request.get_json()
 
         # Convert JSON to DataFrame for prediction
@@ -33,5 +35,6 @@ def predict():
 
 if __name__ == '__main__':
     # Run app on all IP addresses on port 5000 with debug on
+    port = int(os.environ.get("PORT" , 5000))
     app.run(host='0.0.0.0', port=5000, debug=True)
 
