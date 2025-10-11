@@ -1,3 +1,9 @@
+<<<<<<< HEAD
 flask
 gunicorn
 scikit-learn
+=======
+flask
+gunicorn
+scikit-learn
+>>>>>>> cefe736d0ce95ab4ff95177843b26325a9e3b2ac
