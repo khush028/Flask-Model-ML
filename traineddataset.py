@@ -13,7 +13,7 @@ print(data.columns)
 # Select features and target
 features = ['Engine_Temperature','Mileage', 'Oil_Pressure', 'Battery_Voltage', 'Vehicle_Speed']
 X = data[features]
-y = data['Failure_Status']  # Use the correct target column name
+y = data['Failure_Prediction']  # Use the correct target column name
 
 # Split data into train and test sets
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
