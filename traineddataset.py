@@ -11,7 +11,7 @@ data = pd.read_csv('vehicle_training_dataset.csv')
 print(data.columns)
 
 # Select features and target
-features = ['Engine_Temperature', 'Oil_Pressure', 'Battery_Voltage', 'Mileage', 'Vehicle_Speed']
+features = ['Engine_Temperature','Mileage', 'Oil_Pressure', 'Battery_Voltage', 'Vehicle_Speed']
 X = data[features]
 y = data['Failure_Status']  # Use the correct target column name
 
