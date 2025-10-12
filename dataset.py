@@ -11,7 +11,7 @@ n = 500
 # Create synthetic sensor data
 data = {
     "Engine_Temperature": np.random.normal(95, 10, n),
-    "Mileage": np.random.randint(10000, 150000, n)
+    "Mileage": np.random.randint(10000, 150000, n),
     "Oil_Pressure": np.random.normal(7.5, 1.0, n),        
     "Battery_Voltage": np.random.normal(12.0, 0.5, n),    
     "Vehicle_Speed": np.random.randint(0, 120, n)          
