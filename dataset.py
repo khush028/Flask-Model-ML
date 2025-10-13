@@ -18,7 +18,7 @@ data = {
 }
 
 # Simple failure rule for demo
-data["Prediction"] = (
+data["Failure_Prediction"] = (
     (data["Engine_Temperature"] > 110) | 
     (data["Oil_Pressure"] < 6) | 
     (data["Battery_Voltage"] < 11.5)
