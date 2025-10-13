@@ -23,17 +23,17 @@ def predict():
         df = pd.DataFrame([data])
 
         # Debug: print input data
-        print("Input data for prediction:")
+        print("Input data for Failure_Prediction:")
         print(df.head())
 
         # Make prediction (0 or 1)
-        prediction = model.predict(df)[0]
+        Failure_Prediction = model.predict(df)[0]
 
         # Debug: print prediction result
-        print("Prediction result:", prediction)
+        print("Prediction result:", Failure_Prediction)
 
         # Return response as JSON
-        return jsonify({'failure_prediction': int(prediction)})
+        return jsonify({'Failure_Prediction': int(Failure_Prediction)})
     except Exception as e:
         # Return error message for debugging
         return jsonify({'error': str(e)}), 400
