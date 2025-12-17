@@ -6,23 +6,32 @@ app = Flask(__name__)
 
 # Load models
 failure_model = joblib.load("vehicle_failure_model.pkl")
-type_model = joblib.load("failure_type_model.pkl")
-type_encoder = joblib.load("failure_type_encoder.pkl")
+
+# (Optional) Failure type model
+# Agar tumne failure_type_model train kiya hai tabhi use hoga
+try:
+    type_model = joblib.load("failure_type_model.pkl")
+    type_encoder = joblib.load("failure_type_encoder.pkl")
+    FAILURE_TYPE_ENABLED = True
+except:
+    FAILURE_TYPE_ENABLED = False
+
 
 @app.route("/", methods=["GET"])
 def home():
-    return "Vehicle Failure Prediction API is running"
+    return "Vehicle Failure Prediction API Running"
+
 
 @app.route("/predict", methods=["POST"])
 def predict():
     try:
         data = request.get_json()
 
-        # Handle n8n body wrapper
+        # n8n body-wrapper handle
         if isinstance(data, dict) and "body" in data:
             data = data["body"]
 
-        # Create NumPy array (EXACT ORDER)
+        # ---- INPUT ORDER MUST MATCH TRAINING ----
         features = np.array([[
             float(data.get("Engine_Temperature", 0)),
             float(data.get("Mileage", 0)),
@@ -31,17 +40,26 @@ def predict():
             float(data.get("Vehicle_Speed", 0))
         ]])
 
-        # Failure prediction
-        failure_pred = failure_model.predict(features)[0]
-        failure_confidence = failure_model.predict_proba(features).max()
+        # ---- FAILURE PREDICTION ----
+        failure_pred = int(failure_model.predict(features)[0])
+        confidence = float(failure_model.predict_proba(features).max())
+
+        # ---- RISK LEVEL LOGIC (NEW) ----
+        if confidence >= 0.85:
+            risk_level = "High"
+        elif confidence >= 0.60:
+            risk_level = "Medium"
+        else:
+            risk_level = "Low"
 
         response = {
-            "Failure_Prediction": int(failure_pred),
-            "Confidence": float(failure_confidence)
+            "Failure_Prediction": failure_pred,
+            "Confidence": confidence,
+            "Risk_Level": risk_level
         }
 
-        # If failure predicted, also predict failure type
-        if failure_pred == 1:
+        # ---- FAILURE TYPE (OPTIONAL BUT ADDED) ----
+        if FAILURE_TYPE_ENABLED and failure_pred == 1:
             type_pred = type_model.predict(features)[0]
             failure_type = type_encoder.inverse_transform([type_pred])[0]
             response["Failure_Type"] = failure_type
