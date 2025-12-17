@@ -1,30 +1,48 @@
 import pandas as pd
+import numpy as np
+import joblib
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LogisticRegression
-import joblib  # To save the model
+from sklearn.preprocessing import LabelEncoder
 
+# ---------------------------
+# LOAD DATASET
+# ---------------------------
+df = pd.read_csv("vehicle_data.csv")  
+# columns:
+# Engine_Temperature, Mileage, Oil_Pressure,
+# Battery_Voltage, Vehicle_Speed, Failure, Failure_Type
 
-# Load dataset
-data = pd.read_csv('vehicle_training_dataset.csv')
+# ---------------------------
+# FEATURES
+# ---------------------------
+X = df[
+    ["Engine_Temperature", "Mileage", "Oil_Pressure",
+     "Battery_Voltage", "Vehicle_Speed"]
+].values
 
-# Check column names (make sure target column is 'Failure_Status' as generated)
-print(data.columns)
+# ---------------------------
+# MODEL 1: FAILURE YES / NO
+# ---------------------------
+y_failure = df["Failure"].values
 
-# Select features and target
-features = ['Engine_Temperature','Mileage', 'Oil_Pressure', 'Battery_Voltage', 'Vehicle_Speed']
-X = data[features]
-y = data['Failure_Prediction']  # Use the correct target column name
+failure_model = RandomForestClassifier(n_estimators=100, random_state=42)
+failure_model.fit(X, y_failure)
 
-# Split data into train and test sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+joblib.dump(failure_model, "vehicle_failure_model.pkl")
 
-# Initialize and train the Logistic Regression model
-model = LogisticRegression(max_iter=1000)  # Increased iterations for convergence
-model.fit(X_train, y_train)
+# ---------------------------
+# MODEL 2: FAILURE TYPE
+# ---------------------------
+le = LabelEncoder()
+df["Failure_Type_Encoded"] = le.fit_transform(df["Failure_Type"])
 
-# Evaluate
-accuracy = model.score(X_test, y_test)
-print(f'Model accuracy: {accuracy:.2f}')
+y_type = df["Failure_Type_Encoded"].values
 
-# Save the trained model for deployment
-joblib.dump(model, 'vehicle_failure_model.pkl')  # Remove extra usage of assignment (=)
+type_model = RandomForestClassifier(n_estimators=100, random_state=42)
+type_model.fit(X, y_type)
+
+joblib.dump(type_model, "failure_type_model.pkl")
+joblib.dump(le, "failure_type_encoder.pkl")
+
+print("✅ Models trained & saved successfully")
