@@ -1,27 +1,29 @@
 from flask import Flask, request, jsonify
 import joblib
-import pandas as pd
 import numpy as np
 
 app = Flask(__name__)
 
+# Load trained ML model
 model = joblib.load("vehicle_failure_model.pkl")
 
-@app.route("/")
+@app.route("/", methods=["GET"])
 def home():
     return "Vehicle Failure Prediction API is running"
 
 @app.route("/predict", methods=["POST"])
 def predict():
     try:
+        # Get JSON from request
         data = request.get_json()
 
-        # Accept dict or list
-        if isinstance(data, list):
-            data = data[0]
+        # 🔥 HANDLE n8n BODY WRAPPER
+        # If payload is { "body": { ... } }, unwrap it
+        if isinstance(data, dict) and "body" in data:
+            data = data["body"]
 
-        # 🔥 EXACT ORDER USED DURING TRAINING
-        feature_array = np.array([[
+        # 🔥 CREATE NUMPY ARRAY IN EXACT TRAINING ORDER
+        features = np.array([[
             float(data.get("Engine_Temperature", 0)),
             float(data.get("Mileage", 0)),
             float(data.get("Oil_Pressure", 0)),
@@ -29,8 +31,9 @@ def predict():
             float(data.get("Vehicle_Speed", 0))
         ]])
 
-        prediction = model.predict(feature_array)[0]
-        confidence = model.predict_proba(feature_array).max()
+        # Prediction
+        prediction = model.predict(features)[0]
+        confidence = model.predict_proba(features).max()
 
         return jsonify({
             "Failure_Prediction": int(prediction),
@@ -38,7 +41,9 @@ def predict():
         })
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        return jsonify({
+            "error": str(e)
+        }), 400
 
 
 if __name__ == "__main__":
