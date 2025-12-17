@@ -6,8 +6,10 @@ app = Flask(__name__)
 
 model = joblib.load("vehicle_failure_model.pkl")
 
+# EXACT feature order used during training
 FEATURE_ORDER = [
     "Engine_Temperature",
+    "Mileage",
     "Oil_Pressure",
     "Battery_Voltage",
     "Vehicle_Speed"
@@ -18,8 +20,10 @@ def predict():
     try:
         data = request.get_json(force=True)
 
+        # Build row EXACTLY as trained
         row = [
             float(data["Engine_Temperature"]),
+            float(data["Mileage"]),            # ✅ REQUIRED
             float(data["Oil_Pressure"]),
             float(data["Battery_Voltage"]),
             float(data["Vehicle_Speed"])
@@ -44,7 +48,11 @@ def predict():
         else:
             failure_type = "No_Failure"
 
-        risk_level = "High" if confidence >= 0.85 else "Medium" if confidence >= 0.6 else "Low"
+        risk_level = (
+            "High" if confidence >= 0.85
+            else "Medium" if confidence >= 0.6
+            else "Low"
+        )
 
         return jsonify({
             "Failure_Prediction": failure_prediction,
