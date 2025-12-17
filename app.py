@@ -7,19 +7,23 @@ app = Flask(__name__)
 # Load trained model
 model = joblib.load("vehicle_failure_model.pkl")
 
-# Root check
+
 @app.route("/")
 def home():
     return "Vehicle Failure Prediction API is running"
 
-# Prediction endpoint
+
 @app.route("/predict", methods=["POST"])
 def predict():
     try:
         # 1️⃣ Get input JSON
         data = request.get_json()
 
-        # 2️⃣ Force DataFrame with SAME ORDER as training
+        # 🔥 FIX: Handle n8n body wrapper
+        if "body" in data:
+            data = data["body"]
+
+        # 2️⃣ Create DataFrame in SAME ORDER as training
         df = pd.DataFrame([{
             "Engine_Temperature": float(data["Engine_Temperature"]),
             "Mileage": float(data.get("Mileage", 0)),
@@ -32,12 +36,10 @@ def predict():
         proba = model.predict_proba(df)[0][1]
         confidence = round(float(proba), 4)
 
-        # 4️⃣ CONFIDENCE-BASED FAILURE (DEMO SAFE)
+        # 4️⃣ CONFIDENCE-BASED FAILURE
         failure_prediction = 1 if confidence >= 0.6 else 0
 
-        # 5️⃣ FAILURE TYPE LOGIC (RULE-BASED RCA)
-        failure_type = "No_Failure"
-
+        # 5️⃣ FAILURE TYPE (RULE-BASED)
         if failure_prediction == 1:
             if df["Engine_Temperature"][0] > 110:
                 failure_type = "Engine_Overheating"
@@ -49,8 +51,10 @@ def predict():
                 failure_type = "Transmission_Stress"
             else:
                 failure_type = "General_Mechanical_Risk"
+        else:
+            failure_type = "No_Failure"
 
-        # 6️⃣ RISK LEVEL MAPPING
+        # 6️⃣ RISK LEVEL
         if confidence >= 0.85:
             risk_level = "High"
         elif confidence >= 0.6:
@@ -59,14 +63,12 @@ def predict():
             risk_level = "Low"
 
         # 7️⃣ FINAL RESPONSE
-        response = {
+        return jsonify({
             "Failure_Prediction": failure_prediction,
             "Failure_Type": failure_type,
             "Risk_Level": risk_level,
             "Confidence": confidence
-        }
-
-        return jsonify(response)
+        })
 
     except Exception as e:
         return jsonify({"error": str(e)}), 400
