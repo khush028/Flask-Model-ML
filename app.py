@@ -4,40 +4,56 @@ import pandas as pd
 
 app = Flask(__name__)
 
-# Load the trained model (make sure the 'vehicle_failure_model.pkl' file is in the same folder)
+# Load trained model
 model = joblib.load('vehicle_failure_model.pkl')
 
-# Test route to verify server is running
+# Test route
 @app.route('/')
 def home():
-    return "API is running"
+    return "Vehicle Failure Prediction API is running"
 
-# Prediction route, accepts POST requests only
+# Prediction route
 @app.route('/predict', methods=['POST'])
 def predict():
     try:
         # Get JSON data from request
         data = request.get_json()
 
-        # Convert JSON to DataFrame for prediction
-        df = pd.DataFrame([data])
+        # Handle both dict and list input
+        if isinstance(data, list):
+            df = pd.DataFrame(data)
+        else:
+            df = pd.DataFrame([data])
 
-        # Debug: print input data
-        print("Input data for Failure_Prediction:")
-        print(df.head())
+        # 🔥 FORCE SAME FEATURE ORDER AS TRAINING
+        df = df[
+            [
+                'Engine_Temperature',
+                'Mileage',
+                'Oil_Pressure',
+                'Battery_Voltage',
+                'Vehicle_Speed'
+            ]
+        ]
 
-        # Make prediction (0 or 1)
-        Failure_Prediction = model.predict(df)[0]
+        print("Input data used for prediction:")
+        print(df)
 
-        # Debug: print prediction result
-        print("Prediction result:", Failure_Prediction)
+        # Make prediction
+        prediction = model.predict(df)[0]
+        confidence = model.predict_proba(df).max()
 
-        # Return response as JSON
-        return jsonify({'Failure_Prediction': int(Failure_Prediction)})
+        # Return response
+        return jsonify({
+            "Failure_Prediction": int(prediction),
+            "Confidence": float(confidence)
+        })
+
     except Exception as e:
-        # Return error message for debugging
-        return jsonify({'error': str(e)}), 400
+        return jsonify({
+            "error": str(e)
+        }), 400
+
 
 if __name__ == '__main__':
-    # Run app on all IP addresses on port 5000 with debug on
     app.run(host='0.0.0.0', port=5000, debug=True)
