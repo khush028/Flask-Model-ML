@@ -4,17 +4,8 @@ import numpy as np
 
 app = Flask(__name__)
 
-# Load models
+# Load ML model (binary failure prediction)
 failure_model = joblib.load("vehicle_failure_model.pkl")
-
-# (Optional) Failure type model
-# Agar tumne failure_type_model train kiya hai tabhi use hoga
-try:
-    type_model = joblib.load("failure_type_model.pkl")
-    type_encoder = joblib.load("failure_type_encoder.pkl")
-    FAILURE_TYPE_ENABLED = True
-except:
-    FAILURE_TYPE_ENABLED = False
 
 
 @app.route("/", methods=["GET"])
@@ -27,11 +18,13 @@ def predict():
     try:
         data = request.get_json()
 
-        # n8n body-wrapper handle
+        # Handle n8n body-wrapper
         if isinstance(data, dict) and "body" in data:
             data = data["body"]
 
-        # ---- INPUT ORDER MUST MATCH TRAINING ----
+        # -----------------------------
+        # Prepare input (ORDER MATTERS)
+        # -----------------------------
         features = np.array([[
             float(data.get("Engine_Temperature", 0)),
             float(data.get("Mileage", 0)),
@@ -40,11 +33,15 @@ def predict():
             float(data.get("Vehicle_Speed", 0))
         ]])
 
-        # ---- FAILURE PREDICTION ----
+        # -----------------------------
+        # FAILURE PREDICTION (ML)
+        # -----------------------------
         failure_pred = int(failure_model.predict(features)[0])
         confidence = float(failure_model.predict_proba(features).max())
 
-        # ---- RISK LEVEL LOGIC (NEW) ----
+        # -----------------------------
+        # RISK LEVEL (LOGIC-BASED)
+        # -----------------------------
         if confidence >= 0.85:
             risk_level = "High"
         elif confidence >= 0.60:
@@ -52,19 +49,30 @@ def predict():
         else:
             risk_level = "Low"
 
+        # -----------------------------
+        # FAILURE TYPE (RULE-BASED)
+        # -----------------------------
+        if failure_pred == 1:
+            if data.get("Engine_Temperature", 0) > 100:
+                failure_type = "Engine"
+            elif data.get("Battery_Voltage", 0) < 11.5:
+                failure_type = "Battery"
+            elif data.get("Oil_Pressure", 0) < 6:
+                failure_type = "Oil"
+            else:
+                failure_type = "General"
+        else:
+            failure_type = "No_Failure"
+
+        # -----------------------------
+        # FINAL RESPONSE
+        # -----------------------------
         response = {
             "Failure_Prediction": failure_pred,
-            "Confidence": confidence,
-            "Risk_Level": risk_level
+            "Failure_Type": failure_type,
+            "Risk_Level": risk_level,
+            "Confidence": confidence
         }
-
-        # ---- FAILURE TYPE (OPTIONAL BUT ADDED) ----
-        if FAILURE_TYPE_ENABLED and failure_pred == 1:
-            type_pred = type_model.predict(features)[0]
-            failure_type = type_encoder.inverse_transform([type_pred])[0]
-            response["Failure_Type"] = failure_type
-        else:
-            response["Failure_Type"] = "No_Failure"
 
         return jsonify(response)
 
