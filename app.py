@@ -4,8 +4,10 @@ import numpy as np
 
 app = Flask(__name__)
 
-# Load trained ML model
-model = joblib.load("vehicle_failure_model.pkl")
+# Load models
+failure_model = joblib.load("vehicle_failure_model.pkl")
+type_model = joblib.load("failure_type_model.pkl")
+type_encoder = joblib.load("failure_type_encoder.pkl")
 
 @app.route("/", methods=["GET"])
 def home():
@@ -14,15 +16,13 @@ def home():
 @app.route("/predict", methods=["POST"])
 def predict():
     try:
-        # Get JSON from request
         data = request.get_json()
 
-        # 🔥 HANDLE n8n BODY WRAPPER
-        # If payload is { "body": { ... } }, unwrap it
+        # Handle n8n body wrapper
         if isinstance(data, dict) and "body" in data:
             data = data["body"]
 
-        # 🔥 CREATE NUMPY ARRAY IN EXACT TRAINING ORDER
+        # Create NumPy array (EXACT ORDER)
         features = np.array([[
             float(data.get("Engine_Temperature", 0)),
             float(data.get("Mileage", 0)),
@@ -31,19 +31,27 @@ def predict():
             float(data.get("Vehicle_Speed", 0))
         ]])
 
-        # Prediction
-        prediction = model.predict(features)[0]
-        confidence = model.predict_proba(features).max()
+        # Failure prediction
+        failure_pred = failure_model.predict(features)[0]
+        failure_confidence = failure_model.predict_proba(features).max()
 
-        return jsonify({
-            "Failure_Prediction": int(prediction),
-            "Confidence": float(confidence)
-        })
+        response = {
+            "Failure_Prediction": int(failure_pred),
+            "Confidence": float(failure_confidence)
+        }
+
+        # If failure predicted, also predict failure type
+        if failure_pred == 1:
+            type_pred = type_model.predict(features)[0]
+            failure_type = type_encoder.inverse_transform([type_pred])[0]
+            response["Failure_Type"] = failure_type
+        else:
+            response["Failure_Type"] = "No_Failure"
+
+        return jsonify(response)
 
     except Exception as e:
-        return jsonify({
-            "error": str(e)
-        }), 400
+        return jsonify({"error": str(e)}), 400
 
 
 if __name__ == "__main__":
